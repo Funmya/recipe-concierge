@@ -188,7 +188,7 @@
       border-bottom-color: #d6c5b0;
     }
 
-    /* レシピ一覧 & 折りたたみ */
+    /* レシピ一覧 & 画像表示エラー対策 */
     .recipe-card {
       border: 3px solid #eedec8;
       border-radius: 20px;
@@ -204,14 +204,23 @@
       cursor: pointer;
     }
 
-    .recipe-img {
+    .recipe-img-wrapper {
       width: 85px;
       height: 85px;
       border-radius: 14px;
-      object-fit: cover;
       border: 2px solid #ebdccb;
       background: #fdfaf5;
       flex-shrink: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .recipe-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .recipe-summary {
@@ -268,7 +277,7 @@
       line-height: 1.4;
     }
 
-    /* カレンダーレイアウト固定 */
+    /* カレンダー */
     .calendar-header {
       display: flex;
       justify-content: space-between;
@@ -291,7 +300,7 @@
     }
 
     .day-cell {
-      height: 52px; /* 固定高でレイアウト崩れ防止 */
+      height: 52px;
       border: 2px solid #ebdccb;
       border-radius: 12px;
       padding: 2px 4px;
@@ -301,7 +310,6 @@
       justify-content: space-between;
       align-items: center;
       cursor: pointer;
-      position: relative;
     }
 
     .day-cell:hover { background: #fcf8f2; }
@@ -312,7 +320,6 @@
     }
     .day-cell.today .date-num { color: var(--primary-green-dark); }
 
-    /* カレンダー内のシンプルな料理マーク */
     .day-badge {
       background: var(--accent-orange);
       color: white;
@@ -323,11 +330,9 @@
       display: flex;
       align-items: center;
       gap: 2px;
-      max-width: 100%;
-      overflow: hidden;
     }
 
-    /* どうぶつの森風クッキングアニメーション */
+    /* アニメーション */
     .loading-box {
       display: none;
       text-align: center;
@@ -414,6 +419,15 @@
       margin-top: 8px;
       display: none;
     }
+
+    .help-link {
+      font-size: 0.75rem;
+      color: var(--accent-orange-dark);
+      text-decoration: underline;
+      cursor: pointer;
+      display: inline-block;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -427,6 +441,7 @@
       <h2>🔑 APIのかぎ</h2>
       <label for="apiKey">Gemini API Key:</label>
       <input type="password" id="apiKey" placeholder="AI Studioのキーを貼ってね">
+      <span class="help-link" onclick="openKeyHelpModal()">❓ APIキーの取得方法はこちら</span>
     </div>
 
     <div class="card">
@@ -446,13 +461,10 @@
 
       <button class="accent" onclick="generateRecipes()">✨ レシピをおねがいする</button>
 
-      <!-- どうぶつの森風 クッキングアニメーション -->
       <div class="loading-box" id="loading">
         <svg class="cooking-pan" viewBox="0 0 100 100">
-          <!-- フライパン -->
           <path d="M 20 50 L 70 50 A 25 25 0 0 1 20 50 Z" fill="#7a5833"/>
           <rect x="68" y="47" width="28" height="6" rx="3" fill="#a67c52"/>
-          <!-- 跳ねる具材 -->
           <circle class="food-item" cx="35" cy="38" r="5" fill="#ff7676"/>
           <rect class="food-item" x="48" y="32" width="8" height="8" rx="2" fill="#71be68" style="animation-delay: 0.15s;"/>
           <polygon class="food-item" points="40,25 45,33 35,33" fill="#ff9d42" style="animation-delay: 0.3s;"/>
@@ -493,7 +505,22 @@
   </div>
 </div>
 
-<!-- 日付詳細モーダル（その日の記録一覧） -->
+<!-- APIキー説明モーダル -->
+<div class="modal-overlay" id="keyHelpModal">
+  <div class="modal">
+    <h3 style="margin-top:0; color:var(--wood-brown);">🔑 APIキーの取得手順</h3>
+    <p style="font-size:0.85rem; line-height:1.6;">Googleのアカウントがあれば、約1分・無料で簡単に取得できます。</p>
+    <ol style="font-size:0.85rem; padding-left:20px; line-height:1.6;">
+      <li>下のボタンを押して「Google AI Studio」を開く</li>
+      <li>「Get API key」→「Create API key」をタップ</li>
+      <li>発行された文字列をコピーして、この画面の「APIのかぎ」枠に貼り付ける</li>
+    </ol>
+    <button class="accent" onclick="window.open('https://aistudio.google.com/app/apikey', '_blank')">🌐 Google AI Studio を開く</button>
+    <button class="outline" onclick="closeKeyHelpModal()" style="margin-top: 8px;">とじる</button>
+  </div>
+</div>
+
+<!-- 日付詳細モーダル -->
 <div class="modal-overlay" id="dayDetailModal">
   <div class="modal">
     <h3 id="dayDetailTitle" style="margin-top:0; color:var(--wood-brown);">📅 ◯月◯日の献立</h3>
@@ -555,7 +582,15 @@
     renderCalendar();
   };
 
-  // --- 1. 音声入力機能 (Web Speech API) ---
+  function openKeyHelpModal() {
+    document.getElementById("keyHelpModal").style.display = "flex";
+  }
+
+  function closeKeyHelpModal() {
+    document.getElementById("keyHelpModal").style.display = "none";
+  }
+
+  // --- 音声入力 ---
   let recognition = null;
   let isRecording = false;
 
@@ -608,7 +643,7 @@
     btn.innerText = "🎤 音声で入力";
   }
 
-  // --- 2. 直近レシピ取得 (被り防止) ---
+  // --- 直近レシピ取得 ---
   function getRecentRecipeNames(days = 10) {
     const logs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || "{}");
     const recentNames = [];
@@ -625,7 +660,7 @@
     return recentNames;
   }
 
-  // --- 3. AIレシピ生成 (Gemini API) ---
+  // --- AIレシピ生成 ---
   async function generateRecipes() {
     const apiKey = document.getElementById("apiKey").value.trim();
     if (!apiKey) {
@@ -653,7 +688,7 @@
 ${ingredients}
 
 【避けるべきメニュー（直近10日以内に作られたため避ける）】
-${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特になし"}
+${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
 
 【出力フォーマット】
 以下のJSON形式配列のみを出力してください（Markdown装飾は含めないでください）。
@@ -664,7 +699,7 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特になし"}
     "description": "一口みどころ・アピールポイント",
     "ingredients": "使用する材料リスト",
     "steps": ["手順1のテキスト", "手順2のテキスト", "手順3のテキスト"],
-    "imagePrompt": "A delicious dish of [English name of dish], food photography, studio lighting"
+    "imageKeyword": "cooked dish photo"
   }
 ]
 `;
@@ -690,15 +725,15 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特になし"}
     }
   }
 
-  // レシピ一覧表示 (折りたたみ構造)
+  // --- レシピ一覧表示 (安全な画像生成 & フォールバック) ---
   function renderRecipes(recipes) {
     const container = document.getElementById("recipeResults");
     container.innerHTML = "";
 
     recipes.forEach((recipe, idx) => {
-      // ポリネーションAPIを利用した完成イメージ画像URLの自動生成
-      const encodedPrompt = encodeURIComponent(recipe.imagePrompt || recipe.title);
-      const imgUrl = `https://pollinations.ai/p/${encodedPrompt}?width=300&height=300&seed=${idx + 10}`;
+      // 英語のキーワードで安全にエンコードされた生成画像URLを生成
+      const searchKeyword = encodeURIComponent(`${recipe.title} food photography`);
+      const imgUrl = `https://pollinations.ai/p/${searchKeyword}?width=200&height=200&seed=${idx + 10}`;
 
       const card = document.createElement("div");
       card.className = "recipe-card";
@@ -709,7 +744,9 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特になし"}
 
       card.innerHTML = `
         <div class="recipe-header" onclick="toggleRecipeDetails(${idx})">
-          <img src="${imgUrl}" class="recipe-img" alt="${escapeHtml(recipe.title)}" loading="lazy">
+          <div class="recipe-img-wrapper">
+            <img src="${imgUrl}" class="recipe-img" alt="${escapeHtml(recipe.title)}" loading="lazy" onerror="handleImageError(this)">
+          </div>
           <div class="recipe-summary">
             <h3>🍳 ${escapeHtml(recipe.title)}</h3>
             <p>${escapeHtml(recipe.description)}</p>
@@ -729,6 +766,13 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特になし"}
     });
   }
 
+  // 画像読み込み失敗時のフォールバック処理（かわいいSVGイラスト）
+  function handleImageError(imgElem) {
+    imgElem.onerror = null; // ループ防止
+    const svgPlaceholder = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100%" height="100%" fill="%23fdfaf5"/><text x="50%" y="55%" font-size="35" text-anchor="middle" dominant-baseline="middle">🍳</text></svg>`;
+    imgElem.src = svgPlaceholder;
+  }
+
   function toggleRecipeDetails(idx) {
     const details = document.getElementById(`recipeDetails_${idx}`);
     const btn = document.getElementById(`toggleBtn_${idx}`);
@@ -741,7 +785,7 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特になし"}
     }
   }
 
-  // --- 4. カレンダー表示 (レイアウト崩れ防止・ドット表示) ---
+  // --- カレンダー描画 ---
   function renderCalendar() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -777,7 +821,6 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特になし"}
 
       cell.innerHTML = `<div class="date-num">${date}</div>`;
       
-      // 記録が存在する場合はコンパクトなドット・バッチのみ表示
       if (logs[dateStr] && logs[dateStr].length > 0) {
         const badge = document.createElement("div");
         badge.className = "day-badge";
@@ -785,7 +828,6 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特になし"}
         cell.appendChild(badge);
       }
 
-      // タップでその日の詳細モーダルを開く
       cell.onclick = () => openDayDetailModal(dateStr);
       calendarDays.appendChild(cell);
     }
@@ -796,7 +838,7 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特になし"}
     renderCalendar();
   }
 
-  // --- 5. 日付詳細モーダル（その日の献立一覧） ---
+  // --- 日付詳細モーダル ---
   function openDayDetailModal(dateStr) {
     selectedDateStr = dateStr;
     document.getElementById("dayDetailTitle").innerText = `📅 ${dateStr} の献立`;
@@ -832,7 +874,7 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特になし"}
         }
 
         itemCard.innerHTML = `
-          <div style="display:flex; justify-shadow:space-between; align-items:center;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
             <strong style="color:var(--accent-orange-dark); font-size:0.95rem;">🍳 ${escapeHtml(item.name)}</strong>
           </div>
           <div style="margin-top:4px;">${tagsHtml}</div>
@@ -857,7 +899,7 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特になし"}
     openModalForNew(selectedDateStr);
   }
 
-  // --- 6. 記録作成・編集モーダル ---
+  // --- 記録モーダル管理 ---
   let editingIndex = null;
 
   function openModalForAdoption(recipeIdx) {
@@ -899,7 +941,6 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特になし"}
     document.getElementById("deleteBtn").style.display = editingIndex !== null ? "block" : "none";
     document.getElementById("recipeDetailSaveBox").style.display = currentRecipeToSave ? "block" : "none";
 
-    // 写真リセット
     if (editingIndex === null) {
       currentPhotoBase64 = "";
       document.getElementById("modalPhotoInput").value = "";
