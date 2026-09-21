@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>あつまれ レシピの森 🍃</title>
+  <!-- かわいさを引き立てるGoogle Fonts (M PLUS Rounded 1c) -->
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #eaf6e8;
+      --card-bg: #fffdf5;
+      --primary-green: #71be68;
+      --primary-green-dark: #58a14f;
+      --accent-orange: #ff9d42;
+      --accent-orange-dark: #e8832a;
+      --wood-brown: #a67c52;
+      --wood-dark: #7a5833;
+      --text-color: #5d4a3e;
+      --border-color: #e2d7c5;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: 'M PLUS Rounded 1c', -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      /* どうぶつの森風の優しいドットパターン背景 */
+      background-image: 
+        radial-gradient(#d3ebd0 20%, transparent 20%),
+        radial-gradient(#d3ebd0 20%, transparent 20%);
+      background-size: 30px 30px;
+      background-position: 0 0, 15px 15px;
+      color: var(--text-color);
+      margin: 0;
+      padding: 16px;
+    }
+
+    .header-title {
+      text-align: center;
+      margin: 10px 0 20px 0;
+      color: var(--primary-green-dark);
+      font-size: 1.8rem;
+      font-weight: 800;
+      text-shadow: 2px 2px 0px #ffffff, 4px 4px 0px rgba(0,0,0,0.05);
+    }
+
+    .container {
+      max-width: 950px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    @media (min-width: 768px) {
+      .container { grid-template-columns: 340px 1fr; }
+    }
+
+    /* どうぶつの森風カード・吹き出しデザイン */
+    .card {
+      background: var(--card-bg);
+      border: 4px solid var(--border-color);
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: 0 8px 0px rgba(0,0,0,0.06);
+      position: relative;
+    }
+
+    h2 {
+      font-size: 1.15rem;
+      margin-top: 0;
+      color: var(--wood-brown);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 3px dashed var(--border-color);
+      padding-bottom: 8px;
+    }
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: block;
+      margin-top: 12px;
+      margin-bottom: 6px;
+      color: var(--text-color);
+    }
+
+    input[type="text"], input[type="password"], textarea, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 3px solid #ebdccb;
+      border-radius: 16px;
+      font-size: 0.9rem;
+      background-color: #ffffff;
+      color: var(--text-color);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, textarea:focus {
+      border-color: var(--primary-green);
+    }
+
+    textarea { height: 80px; resize: vertical; }
+
+    .radio-group {
+      display: flex;
+      gap: 8px;
+      margin: 8px 0;
+      background: #f7f1e5;
+      padding: 6px;
+      border-radius: 16px;
+    }
+
+    .radio-group label {
+      flex: 1;
+      text-align: center;
+      margin: 0;
+      padding: 6px;
+      border-radius: 12px;
+      cursor: pointer;
+      background: transparent;
+      transition: all 0.2s;
+    }
+
+    .radio-group input[type="radio"] { display: none; }
+    .radio-group label:has(input:checked) {
+      background: var(--primary-green);
+      color: white;
+      font-weight: bold;
+      box-shadow: 0 2px 0px var(--primary-green-dark);
+    }
+
+    /* ぷっくりボタン */
+    button {
+      width: 100%;
+      background: var(--primary-green);
+      color: white;
+      border: none;
+      border-bottom: 4px solid var(--primary-green-dark);
+      padding: 12px;
+      border-radius: 20px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      cursor: pointer;
+      margin-top: 12px;
+      transition: transform 0.1s, border-width 0.1s;
+    }
+
+    button:active {
+      transform: translateY(2px);
+      border-bottom-width: 2px;
+    }
+
+    button.accent {
+      background: var(--accent-orange);
+      border-bottom-color: var(--accent-orange-dark);
+    }
+
+    button.outline {
+      background: #f0e6d6;
+      color: var(--wood-brown);
+      border-bottom-color: #d6c5b0;
+    }
+
+    /* 提案レシピカード */
+    .recipe-card {
+      border: 3px solid #eedec8;
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 14px;
+      background: #ffffff;
+      box-shadow: 0 4px 0px #f3e8d7;
+    }
+
+    .recipe-card h3 {
+      margin: 0 0 8px 0;
+      font-size: 1.1rem;
+      color: var(--accent-orange-dark);
+    }
+
+    .recipe-card p {
+      font-size: 0.85rem;
+      color: var(--text-color);
+      margin: 6px 0;
+      line-height: 1.5;
+    }
+
+    /* カレンダー */
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      text-align: center;
+    }
+
+    .day-name {
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: var(--wood-brown);
+      padding: 4px 0;
+    }
+
+    .day-cell {
+      min-height: 72px;
+      border: 2px solid #ebdccb;
+      border-radius: 14px;
+      padding: 4px;
+      background: #ffffff;
+      font-size: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .day-cell:hover { background: #fcf8f2; }
+    .day-cell .date-num { font-weight: 800; color: #a08c7c; margin-bottom: 2px; }
+    .day-cell.today {
+      background: #eef9ed;
+      border-color: var(--primary-green);
+    }
+    .day-cell.today .date-num { color: var(--primary-green-dark); }
+
+    .event-tag {
+      background: #ffe3ca;
+      color: #d3680e;
+      padding: 3px 6px;
+      border-radius: 10px;
+      font-size: 0.68rem;
+      font-weight: bold;
+      margin-top: 2px;
+      border: 1px solid #ffd1a6;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* モーダル */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(93, 74, 62, 0.4);
+      backdrop-filter: blur(2px);
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .modal {
+      background: var(--card-bg);
+      border: 4px solid var(--border-color);
+      padding: 24px;
+      border-radius: 28px;
+      width: 90%;
+      max-width: 420px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    }
+
+    /* スタンプ風クイックタグ */
+    .quick-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .tag-btn {
+      background: #f3ebdd;
+      border: 2px solid #e2d4c0;
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      cursor: pointer;
+      width: auto;
+      margin: 0;
+      color: var(--text-color);
+      box-shadow: 0 2px 0 #ded0bc;
+    }
+
+    .tag-btn.selected {
+      background: var(--accent-orange);
+      color: white;
+      border-color: var(--accent-orange-dark);
+      box-shadow: 0 2px 0 var(--accent-orange-dark);
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: var(--accent-orange-dark);
+      margin: 12px 0;
+    }
+  </style>
+</head>
+<body>
+
+<h1 class="header-title">🍃 あつまれ レシピの森 🍳</h1>
+
+<div class="container">
+  <!-- 左カラム: 条件入力 & 設定 -->
+  <div class="sidebar">
+    <div class="card" style="margin-bottom: 16px;">
+      <h2>🔑 APIのかぎ</h2>
+      <label for="apiKey">Gemini API Key:</label>
+      <input type="password" id="apiKey" placeholder="AI Studioのキーを貼ってね">
+      <p style="font-size: 0.7rem; color: #8c7868; margin: 6px 0 0 0;">※キーはお使いの端末だけに保存されるよ！</p>
+    </div>
+
+    <div class="card">
+      <h2>🧺 パスポート（食材入力）</h2>
+      <label for="ingredients">今日お家にある食材:</label>
+      <textarea id="ingredients" placeholder="例：ぶたにく、キャベツ、とうふ、玉ねぎ"></textarea>
+
+      <label>作ってほしい料理:</label>
+      <div class="radio-group">
+        <label><input type="radio" name="dishType" value="主菜" checked> 主菜 🍖</label>
+        <label><input type="radio" name="dishType" value="副菜"> 副菜 🥗</label>
+        <label><input type="radio" name="dishType" value="指定なし"> おまかせ 🎲</label>
+      </div>
+
+      <button class="accent" onclick="generateRecipes()">✨ レシピをおねがいする</button>
+      <div class="loading" id="loading">🍃 AIシェフが考え中...♪</div>
+    </div>
+  </div>
+
+  <!-- 右カラム: 提案結果 & カレンダー -->
+  <div class="main-content">
+    <div class="card" style="margin-bottom: 20px;">
+      <h2>📖 ひらめいたレシピ</h2>
+      <div id="recipeResults">
+        <p style="font-size: 0.85rem; color: #9a8878; text-align: center; padding: 20px 0;">
+          食材を入れてボタンを押すと、ここにAIシェフのアイデアが届くよ！
+        </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="calendar-header">
+        <button class="outline" style="width: auto; padding: 6px 14px;" onclick="changeMonth(-1)">◀ 前の月</button>
+        <h2 id="calendarMonth" style="margin:0; border:none; padding:0;">2026年 9月</h2>
+        <button class="outline" style="width: auto; padding: 6px 14px;" onclick="changeMonth(1)">次の月 ▶</button>
+      </div>
+      <div class="calendar-grid">
+        <div class="day-name" style="color:#e05252;">日</div>
+        <div class="day-name">月</div>
+        <div class="day-name">火</div>
+        <div class="day-name">水</div>
+        <div class="day-name">木</div>
+        <div class="day-name">金</div>
+        <div class="day-name" style="color:#4287f5;">土</div>
+      </div>
+      <div class="calendar-grid" id="calendarDays"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ワンタップ記録・編集モーダル -->
+<div class="modal-overlay" id="recordModal">
+  <div class="modal">
+    <h3 id="modalDateTitle" style="margin-top:0; color:var(--wood-brown);">📝 つくったメモ</h3>
+    <label for="modalRecipeName">りょうり名:</label>
+    <input type="text" id="modalRecipeName" placeholder="例：キャベツと豚コマの味噌炒め">
+
+    <label>ワンタップかんそうスタンプ:</label>
+    <div class="quick-tags">
+      <button class="tag-btn" onclick="toggleTag(this, 'かんたん')">⚡ かんたん</button>
+      <button class="tag-btn" onclick="toggleTag(this, 'こども大すき')">👶 こども大すき</button>
+      <button class="tag-btn" onclick="toggleTag(this, '大こうひょう')">❤️ 大こうひょう</button>
+      <button class="tag-btn" onclick="toggleTag(this, 'へるしー')">🥗 へるしー</button>
+      <button class="tag-btn" onclick="toggleTag(this, 'すこし手間')">😅 すこし手間</button>
+    </div>
+
+    <label for="modalMemo">メモ・アレンジ記録:</label>
+    <input type="text" id="modalMemo" placeholder="例: しょうゆを少したしたら美味しかった！">
+
+    <button class="accent" onclick="saveRecord()">保存する！</button>
+    <button class="outline" onclick="closeModal()" style="margin-top: 8px;">やめる</button>
+    <button class="outline" id="deleteBtn" onclick="deleteRecord()" style="margin-top: 8px; color: #d9534f; border-color: #f2dede; display: none;">消す</button>
+  </div>
+</div>
+
+<script>
+  let currentDate = new Date();
+  let selectedDateStr = "";
+  let selectedTags = [];
+  
+  const STORAGE_KEY_LOGS = "recipe_app_logs";
+  const STORAGE_KEY_API = "recipe_app_gemini_key";
+
+  window.onload = () => {
+    document.getElementById("apiKey").value = localStorage.getItem(STORAGE_KEY_API) || "";
+    document.getElementById("apiKey").addEventListener("change", (e) => {
+      localStorage.setItem(STORAGE_KEY_API, e.target.value.trim());
+    });
+    renderCalendar();
+  };
+
+  function getRecentRecipeNames(days = 10) {
+    const logs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || "{}");
+    const recentNames = [];
+    const today = new Date();
+
+    for (let i = 0; i < days; i++) {
+      const d = new Date();
+      d.setDate(today.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      if (logs[dateStr]) {
+        logs[dateStr].forEach(item => recentNames.push(item.name));
+      }
+    }
+    return recentNames;
+  }
+
+  async function generateRecipes() {
+    const apiKey = document.getElementById("apiKey").value.trim();
+    if (!apiKey) {
+      alert("Gemini API Key を入力してね！");
+      return;
+    }
+
+    const ingredients = document.getElementById("ingredients").value.trim();
+    if (!ingredients) {
+      alert("お家にある食材を入力してね！");
+      return;
+    }
+
+    const dishType = document.querySelector('input[name="dishType"]:checked').value;
+    const recentRecipes = getRecentRecipeNames(10);
+    
+    document.getElementById("loading").style.display = "block";
+    document.getElementById("recipeResults").innerHTML = "";
+
+    const prompt = `
+あなたは温かく親しみやすい家庭料理のシェフです。
+以下の条件に基づいて、家庭で簡単に作れる【${dishType}】のレシピ案を3つ提案してください。
+
+【手元にある食材】
+${ingredients}
+
+【避けるべきメニュー（直近10日以内に作られたため、似た料理や同じ料理は避けてください）】
+${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特になし"}
+
+【出力フォーマット】
+以下のJSON形式のみを出力してください（Markdownの\`\`\`json 等の装飾も不要です）。
+
+[
+  {
+    "title": "料理名",
+    "description": "料理の概要・アピールポイント",
+    "ingredients": "使用する材料リスト",
+    "steps": "簡単な手順（箇条書き）"
+  }
+]
+`;
+
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      });
+
+      const data = await response.json();
+      let rawText = data.candidates[0].content.parts[0].text;
+      
+      rawText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+      const recipes = JSON.parse(rawText);
+
+      renderRecipes(recipes);
+    } catch (e) {
+      alert("レシピがうまくひらめかなかったよ。API Keyを確認してみてね！");
+      console.error(e);
+    } finally {
+      document.getElementById("loading").style.display = "none";
+    }
+  }
+
+  function renderRecipes(recipes) {
+    const container = document.getElementById("recipeResults");
+    container.innerHTML = "";
+
+    recipes.forEach((recipe) => {
+      const card = document.createElement("div");
+      card.className = "recipe-card";
+      card.innerHTML = `
+        <h3>🍳 ${recipe.title}</h3>
+        <p><strong>みどころ:</strong> ${recipe.description}</p>
+        <p><strong>ざいりょう:</strong> ${recipe.ingredients}</p>
+        <p><strong>つくりかた:</strong> ${recipe.steps}</p>
+        <button class="accent" onclick="openModalForAdoption('${escapeHtml(recipe.title)}')">つくる！（カレンダーに記録）</button>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+  }
+
+  function renderCalendar() {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
+    document.getElementById("calendarMonth").innerText = `${year}年 ${month + 1}月`;
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const lastDate = new Date(year, month + 1, 0).getDate();
+
+    const calendarDays = document.getElementById("calendarDays");
+    calendarDays.innerHTML = "";
+
+    const logs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || "{}");
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    for (let i = 0; i < firstDay; i++) {
+      const emptyCell = document.createElement("div");
+      emptyCell.className = "day-cell";
+      emptyCell.style.background = "#faf6f0";
+      emptyCell.style.borderColor = "transparent";
+      calendarDays.appendChild(emptyCell);
+    }
+
+    for (let date = 1; date <= lastDate; date++) {
+      const cell = document.createElement("div");
+      cell.className = "day-cell";
+
+      const mStr = String(month + 1).padStart(2, '0');
+      const dStr = String(date).padStart(2, '0');
+      const dateStr = `${year}-${mStr}-${dStr}`;
+
+      if (dateStr === todayStr) cell.classList.add("today");
+
+      cell.innerHTML = `<div class="date-num">${date}</div>`;
+      
+      if (logs[dateStr]) {
+        logs[dateStr].forEach((item, idx) => {
+          const tag = document.createElement("div");
+          tag.className = "event-tag";
+          const memoText = item.tags && item.tags.length ? ` (${item.tags.join(',')})` : '';
+          tag.innerText = `🍳 ${item.name}${memoText}`;
+          tag.onclick = (e) => {
+            e.stopPropagation();
+            openModalForEdit(dateStr, idx);
+          };
+          cell.appendChild(tag);
+        });
+      }
+
+      cell.onclick = () => openModalForNew(dateStr);
+      calendarDays.appendChild(cell);
+    }
+  }
+
+  function changeMonth(delta) {
+    currentDate.setMonth(currentDate.getMonth() + delta);
+    renderCalendar();
+  }
+
+  let editingIndex = null;
+
+  function openModalForAdoption(recipeTitle) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    openModal(todayStr, recipeTitle);
+  }
+
+  function openModalForNew(dateStr) {
+    openModal(dateStr, "");
+  }
+
+  function openModalForEdit(dateStr, index) {
+    const logs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || "{}");
+    const item = logs[dateStr][index];
+    editingIndex = index;
+    openModal(dateStr, item.name, item.tags || [], item.memo || "");
+    document.getElementById("deleteBtn").style.display = "block";
+  }
+
+  function openModal(dateStr, recipeName = "", tags = [], memo = "") {
+    selectedDateStr = dateStr;
+    document.getElementById("modalDateTitle").innerText = `📝 ${dateStr} のきろく`;
+    document.getElementById("modalRecipeName").value = recipeName;
+    document.getElementById("modalMemo").value = memo;
+    document.getElementById("deleteBtn").style.display = editingIndex !== null ? "block" : "none";
+
+    selectedTags = [...tags];
+    document.querySelectorAll(".tag-btn").forEach(btn => {
+      const tagName = btn.innerText.replace(/^[^\s]+\s/, '');
+      if (tags.includes(tagName)) {
+        btn.classList.add("selected");
+      } else {
+        btn.classList.remove("selected");
+      }
+    });
+
+    document.getElementById("recordModal").style.display = "flex";
+  }
+
+  function closeModal() {
+    document.getElementById("recordModal").style.display = "none";
+    editingIndex = null;
+    selectedTags = [];
+  }
+
+  function toggleTag(btn, tagName) {
+    btn.classList.toggle("selected");
+    if (btn.classList.contains("selected")) {
+      selectedTags.push(tagName);
+    } else {
+      selectedTags = selectedTags.filter(t => t !== tagName);
+    }
+  }
+
+  function saveRecord() {
+    const name = document.getElementById("modalRecipeName").value.trim();
+    const memo = document.getElementById("modalMemo").value.trim();
+    if (!name) {
+      alert("りょうり名を入力してね！");
+      return;
+    }
+
+    const logs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || "{}");
+    if (!logs[selectedDateStr]) logs[selectedDateStr] = [];
+
+    const recordData = { name, tags: selectedTags, memo };
+
+    if (editingIndex !== null) {
+      logs[selectedDateStr][editingIndex] = recordData;
+    } else {
+      logs[selectedDateStr].push(recordData);
+    }
+
+    localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(logs));
+    closeModal();
+    renderCalendar();
+  }
+
+  function deleteRecord() {
+    if (editingIndex === null) return;
+    const logs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || "{}");
+    if (logs[selectedDateStr]) {
+      logs[selectedDateStr].splice(editingIndex, 1);
+      if (logs[selectedDateStr].length === 0) delete logs[selectedDateStr];
+      localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(logs));
+    }
+    closeModal();
+    renderCalendar();
+  }
+</script>
+</body>
+</html>
