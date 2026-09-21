@@ -86,7 +86,7 @@
       color: var(--text-color);
     }
 
-    input[type="text"], input[type="password"], textarea, select {
+    input[type="text"], input[type="password"], textarea {
       width: 100%;
       padding: 10px 12px;
       border: 3px solid #ebdccb;
@@ -188,7 +188,7 @@
       border-bottom-color: #d6c5b0;
     }
 
-    /* レシピ一覧 & 画像表示エラー対策 */
+    /* レシピ一覧 & 画像表示 */
     .recipe-card {
       border: 3px solid #eedec8;
       border-radius: 20px;
@@ -277,7 +277,41 @@
       line-height: 1.4;
     }
 
-    /* カレンダー */
+    /* カレンダー & フィルター */
+    .filter-box {
+      background: #f8f2e6;
+      border: 2px solid #ebdccb;
+      border-radius: 16px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+    }
+
+    .filter-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .filter-tag-btn {
+      background: #ffffff;
+      border: 2px solid #e2d4c0;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      cursor: pointer;
+      width: auto;
+      margin: 0;
+      color: var(--text-color);
+    }
+
+    .filter-tag-btn.active {
+      background: var(--accent-orange);
+      color: white;
+      border-color: var(--accent-orange-dark);
+    }
+
     .calendar-header {
       display: flex;
       justify-content: space-between;
@@ -300,7 +334,7 @@
     }
 
     .day-cell {
-      height: 52px;
+      height: 54px;
       border: 2px solid #ebdccb;
       border-radius: 12px;
       padding: 2px 4px;
@@ -310,15 +344,28 @@
       justify-content: space-between;
       align-items: center;
       cursor: pointer;
+      transition: all 0.2s;
     }
 
     .day-cell:hover { background: #fcf8f2; }
     .day-cell .date-num { font-weight: 800; font-size: 0.75rem; color: #a08c7c; }
+    
     .day-cell.today {
       background: #eef9ed;
       border-color: var(--primary-green);
     }
     .day-cell.today .date-num { color: var(--primary-green-dark); }
+
+    /* 検索でヒットした日のスタイル */
+    .day-cell.matched {
+      background: #fff8e7;
+      border-color: var(--accent-orange);
+      box-shadow: 0 0 6px rgba(255, 157, 66, 0.4);
+    }
+
+    .day-cell.dimmed {
+      opacity: 0.35;
+    }
 
     .day-badge {
       background: var(--accent-orange);
@@ -330,6 +377,10 @@
       display: flex;
       align-items: center;
       gap: 2px;
+      max-width: 100%;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
     }
 
     /* アニメーション */
@@ -486,6 +537,22 @@
     </div>
 
     <div class="card">
+      <h2>📅 つくった献立カレンダー</h2>
+
+      <!-- 過去検索・フィルター機能 -->
+      <div class="filter-box">
+        <label style="margin-top:0;">🔍 過去の記録をさがす:</label>
+        <input type="text" id="searchKeyword" placeholder="例：キャベツ、豚肉、みそ..." oninput="renderCalendar()">
+        
+        <div class="filter-tags">
+          <button class="filter-tag-btn" onclick="toggleFilterTag(this, 'かんたん')">⚡ かんたん</button>
+          <button class="filter-tag-btn" onclick="toggleFilterTag(this, 'こども大すき')">👶 こども大すき</button>
+          <button class="filter-tag-btn" onclick="toggleFilterTag(this, '大こうひょう')">❤️ 大こうひょう</button>
+          <button class="filter-tag-btn" onclick="toggleFilterTag(this, 'へるしー')">🥗 へるしー</button>
+          <button class="filter-tag-btn" onclick="toggleFilterTag(this, 'すこし手間')">😅 すこし手間</button>
+        </div>
+      </div>
+
       <div class="calendar-header">
         <button class="outline" style="width: auto; padding: 6px 14px;" onclick="changeMonth(-1)">◀ 前の月</button>
         <h2 id="calendarMonth" style="margin:0; border:none; padding:0;">2026年 9月</h2>
@@ -568,6 +635,7 @@
   let currentDate = new Date();
   let selectedDateStr = "";
   let selectedTags = [];
+  let activeFilterTags = [];
   let currentRecipeToSave = null;
   let currentPhotoBase64 = "";
 
@@ -699,7 +767,7 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     "description": "一口みどころ・アピールポイント",
     "ingredients": "使用する材料リスト",
     "steps": ["手順1のテキスト", "手順2のテキスト", "手順3のテキスト"],
-    "imageKeyword": "cooked dish photo"
+    "englishName": "japanese food"
   }
 ]
 `;
@@ -725,15 +793,15 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     }
   }
 
-  // --- レシピ一覧表示 (安全な画像生成 & フォールバック) ---
+  // --- レシピ一覧表示 (安定画像ソース & かわいい代替背景) ---
   function renderRecipes(recipes) {
     const container = document.getElementById("recipeResults");
     container.innerHTML = "";
 
     recipes.forEach((recipe, idx) => {
-      // 英語のキーワードで安全にエンコードされた生成画像URLを生成
-      const searchKeyword = encodeURIComponent(`${recipe.title} food photography`);
-      const imgUrl = `https://pollinations.ai/p/${searchKeyword}?width=200&height=200&seed=${idx + 10}`;
+      // 高信頼画像ソース (Unsplash Source)
+      const query = encodeURIComponent(recipe.englishName || "japanese food");
+      const imgUrl = `https://source.unsplash.com/200x200/?${query}&sig=${idx + Math.floor(Math.random() * 100)}`;
 
       const card = document.createElement("div");
       card.className = "recipe-card";
@@ -744,8 +812,8 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
 
       card.innerHTML = `
         <div class="recipe-header" onclick="toggleRecipeDetails(${idx})">
-          <div class="recipe-img-wrapper">
-            <img src="${imgUrl}" class="recipe-img" alt="${escapeHtml(recipe.title)}" loading="lazy" onerror="handleImageError(this)">
+          <div class="recipe-img-wrapper" id="imgWrapper_${idx}">
+            <img src="${imgUrl}" class="recipe-img" alt="${escapeHtml(recipe.title)}" loading="lazy" onerror="handleImageError(this, '${escapeHtml(recipe.title)}')">
           </div>
           <div class="recipe-summary">
             <h3>🍳 ${escapeHtml(recipe.title)}</h3>
@@ -766,10 +834,12 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     });
   }
 
-  // 画像読み込み失敗時のフォールバック処理（かわいいSVGイラスト）
-  function handleImageError(imgElem) {
-    imgElem.onerror = null; // ループ防止
-    const svgPlaceholder = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100%" height="100%" fill="%23fdfaf5"/><text x="50%" y="55%" font-size="35" text-anchor="middle" dominant-baseline="middle">🍳</text></svg>`;
+  // 画像読み込み失敗時のフォールバック処理（かわいいカラー背景SVGイラスト）
+  function handleImageError(imgElem, title) {
+    imgElem.onerror = null;
+    const icons = ["🍳", "🥗", "🍖", "🍲", "🍱"];
+    const randomIcon = icons[Math.floor(Math.random() * icons.length)];
+    const svgPlaceholder = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100%" height="100%" fill="%23f7ede2"/><text x="50%" y="55%" font-size="40" text-anchor="middle" dominant-baseline="middle">${randomIcon}</text></svg>`;
     imgElem.src = svgPlaceholder;
   }
 
@@ -785,10 +855,22 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     }
   }
 
-  // --- カレンダー描画 ---
+  // --- カレンダー検索フィルターのトグル ---
+  function toggleFilterTag(btn, tagName) {
+    btn.classList.toggle("active");
+    if (btn.classList.contains("active")) {
+      activeFilterTags.push(tagName);
+    } else {
+      activeFilterTags = activeFilterTags.filter(t => t !== tagName);
+    }
+    renderCalendar();
+  }
+
+  // --- カレンダー描画（検索・絞り込み連動） ---
   function renderCalendar() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
+    const keyword = document.getElementById("searchKeyword").value.trim().toLowerCase();
 
     document.getElementById("calendarMonth").innerText = `${year}年 ${month + 1}月`;
 
@@ -809,6 +891,8 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
       calendarDays.appendChild(emptyCell);
     }
 
+    const isFilterActive = keyword !== "" || activeFilterTags.length > 0;
+
     for (let date = 1; date <= lastDate; date++) {
       const cell = document.createElement("div");
       cell.className = "day-cell";
@@ -821,11 +905,40 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
 
       cell.innerHTML = `<div class="date-num">${date}</div>`;
       
-      if (logs[dateStr] && logs[dateStr].length > 0) {
+      const dayRecords = logs[dateStr] || [];
+
+      if (dayRecords.length > 0) {
+        // 検索マッチ判定
+        let isMatched = false;
+        if (isFilterActive) {
+          isMatched = dayRecords.some(item => {
+            const nameMatch = item.name.toLowerCase().includes(keyword);
+            const memoMatch = (item.memo || "").toLowerCase().includes(keyword);
+            const ingMatch = item.recipe && (item.recipe.ingredients || "").toLowerCase().includes(keyword);
+            const textMatch = keyword === "" || (nameMatch || memoMatch || ingMatch);
+
+            const tagMatch = activeFilterTags.length === 0 || 
+              activeFilterTags.every(ft => (item.tags || []).includes(ft));
+
+            return textMatch && tagMatch;
+          });
+        }
+
+        if (isFilterActive) {
+          if (isMatched) {
+            cell.classList.add("matched");
+          } else {
+            cell.classList.add("dimmed");
+          }
+        }
+
         const badge = document.createElement("div");
         badge.className = "day-badge";
-        badge.innerText = `🍳 ${logs[dateStr].length}件`;
+        if (isMatched) badge.style.background = "var(--primary-green-dark)";
+        badge.innerText = `🍳 ${dayRecords[0].name.substring(0, 4)}..`;
         cell.appendChild(badge);
+      } else if (isFilterActive) {
+        cell.classList.add("dimmed");
       }
 
       cell.onclick = () => openDayDetailModal(dateStr);
