@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>あつまれ レシピの森 🍃</title>
   <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Firebase SDK (v9 Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
   <style>
     :root {
       --bg-color: #eaf6e8;
@@ -99,9 +104,7 @@
 
     textarea { height: 80px; resize: vertical; }
 
-    .input-with-btn {
-      position: relative;
-    }
+    .input-with-btn { position: relative; }
 
     .voice-btn {
       margin-top: 6px;
@@ -223,9 +226,7 @@
       object-fit: cover;
     }
 
-    .recipe-summary {
-      flex: 1;
-    }
+    .recipe-summary { flex: 1; }
 
     .recipe-summary h3 {
       margin: 0 0 4px 0;
@@ -263,9 +264,7 @@
       font-size: 0.85rem;
     }
 
-    .recipe-details.open {
-      display: block;
-    }
+    .recipe-details.open { display: block; }
 
     .steps-list {
       padding-left: 20px;
@@ -356,16 +355,13 @@
     }
     .day-cell.today .date-num { color: var(--primary-green-dark); }
 
-    /* 検索でヒットした日のスタイル */
     .day-cell.matched {
       background: #fff8e7;
       border-color: var(--accent-orange);
       box-shadow: 0 0 6px rgba(255, 157, 66, 0.4);
     }
 
-    .day-cell.dimmed {
-      opacity: 0.35;
-    }
+    .day-cell.dimmed { opacity: 0.35; }
 
     .day-badge {
       background: var(--accent-orange);
@@ -402,9 +398,7 @@
       100% { transform: rotate(8deg) translateY(-5px); }
     }
 
-    .food-item {
-      animation: foodJump 0.6s infinite alternate ease-in-out;
-    }
+    .food-item { animation: foodJump 0.6s infinite alternate ease-in-out; }
 
     @keyframes foodJump {
       0% { transform: translateY(0); }
@@ -479,6 +473,17 @@
       display: inline-block;
       margin-top: 4px;
     }
+
+    .sync-status {
+      font-size: 0.75rem;
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 10px;
+      display: inline-block;
+      margin-top: 4px;
+    }
+    .sync-online { background: #e8f5e9; color: #2e7d32; }
+    .sync-offline { background: #fff3e0; color: #e65100; }
   </style>
 </head>
 <body>
@@ -493,6 +498,15 @@
       <label for="apiKey">Gemini API Key:</label>
       <input type="password" id="apiKey" placeholder="AI Studioのキーを貼ってね">
       <span class="help-link" onclick="openKeyHelpModal()">❓ APIキーの取得方法はこちら</span>
+    </div>
+
+    <!-- リアルタイム夫婦共有設定 -->
+    <div class="card" style="margin-bottom: 16px;">
+      <h2>🔥 夫婦リアルタイム共有設定</h2>
+      <span id="syncStatus" class="sync-status sync-offline">🔌 未接続（オフライン保存中）</span>
+      <label for="firebaseConfigText">Firebase Database URL / Config:</label>
+      <textarea id="firebaseConfigText" placeholder='{"databaseURL": "https://your-app.firebaseio.com"}' style="height:60px; font-size:0.75rem;"></textarea>
+      <p style="font-size: 0.7rem; color: #8c7868; margin: 4px 0 0 0;">※FirebaseのdatabaseURLを入力すると自動で夫婦で同期されます。</p>
     </div>
 
     <div class="card">
@@ -539,7 +553,6 @@
     <div class="card">
       <h2>📅 つくった献立カレンダー</h2>
 
-      <!-- 過去検索・フィルター機能 -->
       <div class="filter-box">
         <label style="margin-top:0;">🔍 過去の記録をさがす:</label>
         <input type="text" id="searchKeyword" placeholder="例：キャベツ、豚肉、みそ..." oninput="renderCalendar()">
@@ -572,7 +585,7 @@
   </div>
 </div>
 
-<!-- APIキー説明モーダル -->
+<!-- モーダル各種 -->
 <div class="modal-overlay" id="keyHelpModal">
   <div class="modal">
     <h3 style="margin-top:0; color:var(--wood-brown);">🔑 APIキーの取得手順</h3>
@@ -587,7 +600,6 @@
   </div>
 </div>
 
-<!-- 日付詳細モーダル -->
 <div class="modal-overlay" id="dayDetailModal">
   <div class="modal">
     <h3 id="dayDetailTitle" style="margin-top:0; color:var(--wood-brown);">📅 ◯月◯日の献立</h3>
@@ -597,7 +609,6 @@
   </div>
 </div>
 
-<!-- 記録・編集モーダル -->
 <div class="modal-overlay" id="recordModal">
   <div class="modal">
     <h3 id="modalDateTitle" style="margin-top:0; color:var(--wood-brown);">📝 つくったメモ</h3>
@@ -638,25 +649,84 @@
   let activeFilterTags = [];
   let currentRecipeToSave = null;
   let currentPhotoBase64 = "";
+  
+  let dbRef = null;
+  let localLogs = {};
 
   const STORAGE_KEY_LOGS = "recipe_app_logs";
   const STORAGE_KEY_API = "recipe_app_gemini_key";
+  const STORAGE_KEY_FIREBASE = "recipe_app_firebase_cfg";
 
   window.onload = () => {
     document.getElementById("apiKey").value = localStorage.getItem(STORAGE_KEY_API) || "";
     document.getElementById("apiKey").addEventListener("change", (e) => {
       localStorage.setItem(STORAGE_KEY_API, e.target.value.trim());
     });
+
+    const fbCfgStr = localStorage.getItem(STORAGE_KEY_FIREBASE) || "";
+    document.getElementById("firebaseConfigText").value = fbCfgStr;
+    document.getElementById("firebaseConfigText").addEventListener("change", (e) => {
+      localStorage.setItem(STORAGE_KEY_FIREBASE, e.target.value.trim());
+      initFirebase();
+    });
+
+    localLogs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || "{}");
+    initFirebase();
     renderCalendar();
   };
 
-  function openKeyHelpModal() {
-    document.getElementById("keyHelpModal").style.display = "flex";
+  // --- Firebase リアルタイム同期初期化 ---
+  function initFirebase() {
+    const rawCfg = localStorage.getItem(STORAGE_KEY_FIREBASE) || "";
+    if (!rawCfg) return;
+
+    try {
+      let cfg = {};
+      if (rawCfg.startsWith("http")) {
+        cfg = { databaseURL: rawCfg.trim() };
+      } else {
+        cfg = JSON.parse(rawCfg);
+      }
+
+      if (!firebase.apps.length) {
+        firebase.initializeApp(cfg);
+      }
+      
+      dbRef = firebase.database().ref("recipe_logs");
+      
+      // リアルタイムリスナー設定 (相手が更新しても即座に動く)
+      dbRef.on("value", (snapshot) => {
+        const val = snapshot.val();
+        if (val) {
+          localLogs = val;
+          localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(localLogs));
+          renderCalendar();
+          
+          // 日付詳細モーダルが開いている場合は自動更新
+          if (document.getElementById("dayDetailModal").style.display === "flex") {
+            openDayDetailModal(selectedDateStr);
+          }
+        }
+      });
+
+      const statusElem = document.getElementById("syncStatus");
+      statusElem.className = "sync-status sync-online";
+      statusElem.innerText = "⚡ 夫婦リアルタイム同期中";
+    } catch (e) {
+      console.error("Firebase init error:", e);
+    }
   }
 
-  function closeKeyHelpModal() {
-    document.getElementById("keyHelpModal").style.display = "none";
+  function syncData(newLogs) {
+    localLogs = newLogs;
+    localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(localLogs));
+    if (dbRef) {
+      dbRef.set(localLogs);
+    }
   }
+
+  function openKeyHelpModal() { document.getElementById("keyHelpModal").style.display = "flex"; }
+  function closeKeyHelpModal() { document.getElementById("keyHelpModal").style.display = "none"; }
 
   // --- 音声入力 ---
   let recognition = null;
@@ -678,7 +748,6 @@
 
     recognition = new SpeechRecognition();
     recognition.lang = "ja-JP";
-    recognition.interimResults = false;
 
     recognition.onstart = () => {
       isRecording = true;
@@ -692,15 +761,8 @@
       textarea.value = textarea.value ? `${textarea.value}、${transcript}` : transcript;
     };
 
-    recognition.onerror = (e) => {
-      console.error(e);
-      stopVoiceRecording();
-    };
-
-    recognition.onend = () => {
-      stopVoiceRecording();
-    };
-
+    recognition.onerror = () => stopVoiceRecording();
+    recognition.onend = () => stopVoiceRecording();
     recognition.start();
   }
 
@@ -711,9 +773,7 @@
     btn.innerText = "🎤 音声で入力";
   }
 
-  // --- 直近レシピ取得 ---
   function getRecentRecipeNames(days = 10) {
-    const logs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || "{}");
     const recentNames = [];
     const today = new Date();
 
@@ -721,14 +781,13 @@
       const d = new Date();
       d.setDate(today.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
-      if (logs[dateStr]) {
-        logs[dateStr].forEach(item => recentNames.push(item.name));
+      if (localLogs[dateStr]) {
+        localLogs[dateStr].forEach(item => recentNames.push(item.name));
       }
     }
     return recentNames;
   }
 
-  // --- AIレシピ生成 ---
   async function generateRecipes() {
     const apiKey = document.getElementById("apiKey").value.trim();
     if (!apiKey) {
@@ -793,13 +852,11 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     }
   }
 
-  // --- レシピ一覧表示 (安定画像ソース & かわいい代替背景) ---
   function renderRecipes(recipes) {
     const container = document.getElementById("recipeResults");
     container.innerHTML = "";
 
     recipes.forEach((recipe, idx) => {
-      // 高信頼画像ソース (Unsplash Source)
       const query = encodeURIComponent(recipe.englishName || "japanese food");
       const imgUrl = `https://source.unsplash.com/200x200/?${query}&sig=${idx + Math.floor(Math.random() * 100)}`;
 
@@ -812,8 +869,8 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
 
       card.innerHTML = `
         <div class="recipe-header" onclick="toggleRecipeDetails(${idx})">
-          <div class="recipe-img-wrapper" id="imgWrapper_${idx}">
-            <img src="${imgUrl}" class="recipe-img" alt="${escapeHtml(recipe.title)}" loading="lazy" onerror="handleImageError(this, '${escapeHtml(recipe.title)}')">
+          <div class="recipe-img-wrapper">
+            <img src="${imgUrl}" class="recipe-img" alt="${escapeHtml(recipe.title)}" loading="lazy" onerror="handleImageError(this)">
           </div>
           <div class="recipe-summary">
             <h3>🍳 ${escapeHtml(recipe.title)}</h3>
@@ -834,13 +891,11 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     });
   }
 
-  // 画像読み込み失敗時のフォールバック処理（かわいいカラー背景SVGイラスト）
-  function handleImageError(imgElem, title) {
+  function handleImageError(imgElem) {
     imgElem.onerror = null;
     const icons = ["🍳", "🥗", "🍖", "🍲", "🍱"];
     const randomIcon = icons[Math.floor(Math.random() * icons.length)];
-    const svgPlaceholder = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100%" height="100%" fill="%23f7ede2"/><text x="50%" y="55%" font-size="40" text-anchor="middle" dominant-baseline="middle">${randomIcon}</text></svg>`;
-    imgElem.src = svgPlaceholder;
+    imgElem.src = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100%" height="100%" fill="%23f7ede2"/><text x="50%" y="55%" font-size="40" text-anchor="middle" dominant-baseline="middle">${randomIcon}</text></svg>`;
   }
 
   function toggleRecipeDetails(idx) {
@@ -855,7 +910,6 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     }
   }
 
-  // --- カレンダー検索フィルターのトグル ---
   function toggleFilterTag(btn, tagName) {
     btn.classList.toggle("active");
     if (btn.classList.contains("active")) {
@@ -866,7 +920,6 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     renderCalendar();
   }
 
-  // --- カレンダー描画（検索・絞り込み連動） ---
   function renderCalendar() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -880,7 +933,6 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     const calendarDays = document.getElementById("calendarDays");
     calendarDays.innerHTML = "";
 
-    const logs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || "{}");
     const todayStr = new Date().toISOString().split('T')[0];
 
     for (let i = 0; i < firstDay; i++) {
@@ -905,10 +957,9 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
 
       cell.innerHTML = `<div class="date-num">${date}</div>`;
       
-      const dayRecords = logs[dateStr] || [];
+      const dayRecords = localLogs[dateStr] || [];
 
       if (dayRecords.length > 0) {
-        // 検索マッチ判定
         let isMatched = false;
         if (isFilterActive) {
           isMatched = dayRecords.some(item => {
@@ -925,11 +976,8 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
         }
 
         if (isFilterActive) {
-          if (isMatched) {
-            cell.classList.add("matched");
-          } else {
-            cell.classList.add("dimmed");
-          }
+          if (isMatched) cell.classList.add("matched");
+          else cell.classList.add("dimmed");
         }
 
         const badge = document.createElement("div");
@@ -951,13 +999,11 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     renderCalendar();
   }
 
-  // --- 日付詳細モーダル ---
   function openDayDetailModal(dateStr) {
     selectedDateStr = dateStr;
     document.getElementById("dayDetailTitle").innerText = `📅 ${dateStr} の献立`;
     
-    const logs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || "{}");
-    const dayRecords = logs[dateStr] || [];
+    const dayRecords = localLogs[dateStr] || [];
     const container = document.getElementById("dayRecordsList");
     container.innerHTML = "";
 
@@ -1012,7 +1058,6 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     openModalForNew(selectedDateStr);
   }
 
-  // --- 記録モーダル管理 ---
   let editingIndex = null;
 
   function openModalForAdoption(recipeIdx) {
@@ -1031,8 +1076,7 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
 
   function openModalForEdit(dateStr, index) {
     closeDayDetailModal();
-    const logs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || "{}");
-    const item = logs[dateStr][index];
+    const item = localLogs[dateStr][index];
     editingIndex = index;
     currentRecipeToSave = item.recipe || null;
     currentPhotoBase64 = item.photo || "";
@@ -1111,8 +1155,8 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
       return;
     }
 
-    const logs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || "{}");
-    if (!logs[selectedDateStr]) logs[selectedDateStr] = [];
+    const updatedLogs = { ...localLogs };
+    if (!updatedLogs[selectedDateStr]) updatedLogs[selectedDateStr] = [];
 
     const recordData = {
       name,
@@ -1123,23 +1167,23 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     };
 
     if (editingIndex !== null) {
-      logs[selectedDateStr][editingIndex] = recordData;
+      updatedLogs[selectedDateStr][editingIndex] = recordData;
     } else {
-      logs[selectedDateStr].push(recordData);
+      updatedLogs[selectedDateStr].push(recordData);
     }
 
-    localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(logs));
+    syncData(updatedLogs);
     closeRecordModal();
     renderCalendar();
   }
 
   function deleteRecord() {
     if (editingIndex === null) return;
-    const logs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || "{}");
-    if (logs[selectedDateStr]) {
-      logs[selectedDateStr].splice(editingIndex, 1);
-      if (logs[selectedDateStr].length === 0) delete logs[selectedDateStr];
-      localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(logs));
+    const updatedLogs = { ...localLogs };
+    if (updatedLogs[selectedDateStr]) {
+      updatedLogs[selectedDateStr].splice(editingIndex, 1);
+      if (updatedLogs[selectedDateStr].length === 0) delete updatedLogs[selectedDateStr];
+      syncData(updatedLogs);
     }
     closeRecordModal();
     renderCalendar();
