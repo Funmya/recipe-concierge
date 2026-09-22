@@ -332,8 +332,9 @@
       padding: 4px 0;
     }
 
+    /* マスの高さを固定し横幅も均等保持 */
     .day-cell {
-      height: 54px;
+      height: 52px;
       border: 2px solid #ebdccb;
       border-radius: 12px;
       padding: 2px 4px;
@@ -344,6 +345,7 @@
       align-items: center;
       cursor: pointer;
       transition: all 0.2s;
+      overflow: hidden;
     }
 
     .day-cell:hover { background: #fcf8f2; }
@@ -363,20 +365,17 @@
 
     .day-cell.dimmed { opacity: 0.35; }
 
+    /* 「🍳 ◯件」形式のバッジ */
     .day-badge {
       background: var(--accent-orange);
       color: white;
       border-radius: 10px;
       font-size: 0.65rem;
-      padding: 1px 4px;
+      padding: 1px 5px;
       font-weight: bold;
-      display: flex;
-      align-items: center;
-      gap: 2px;
-      max-width: 100%;
-      overflow: hidden;
+      display: inline-block;
       white-space: nowrap;
-      text-overflow: ellipsis;
+      line-height: 1.2;
     }
 
     /* アニメーション */
@@ -675,7 +674,7 @@
     renderCalendar();
   };
 
-  // --- Firebase リアルタイム同期初期化 ---
+  // --- Firebase リアルタイム同期 ---
   function initFirebase() {
     const rawCfg = localStorage.getItem(STORAGE_KEY_FIREBASE) || "";
     if (!rawCfg) return;
@@ -694,7 +693,6 @@
       
       dbRef = firebase.database().ref("recipe_logs");
       
-      // リアルタイムリスナー設定 (相手が更新しても即座に動く)
       dbRef.on("value", (snapshot) => {
         const val = snapshot.val();
         if (val) {
@@ -702,7 +700,6 @@
           localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(localLogs));
           renderCalendar();
           
-          // 日付詳細モーダルが開いている場合は自動更新
           if (document.getElementById("dayDetailModal").style.display === "flex") {
             openDayDetailModal(selectedDateStr);
           }
@@ -920,6 +917,7 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     renderCalendar();
   }
 
+  // --- カレンダー描画（レイアウト保護＋コンパクト件数表示） ---
   function renderCalendar() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -980,10 +978,11 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
           else cell.classList.add("dimmed");
         }
 
+        // コンパクトな「🍳 ◯件」バッジ表示に戻し、横幅崩れを防止
         const badge = document.createElement("div");
         badge.className = "day-badge";
         if (isMatched) badge.style.background = "var(--primary-green-dark)";
-        badge.innerText = `🍳 ${dayRecords[0].name.substring(0, 4)}..`;
+        badge.innerText = `🍳 ${dayRecords.length}件`;
         cell.appendChild(badge);
       } else if (isFilterActive) {
         cell.classList.add("dimmed");
