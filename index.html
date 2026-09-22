@@ -41,13 +41,47 @@
       padding: 16px;
     }
 
+    .header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 950px;
+      margin: 0 auto 16px auto;
+      position: relative;
+    }
+
     .header-title {
-      text-align: center;
-      margin: 10px 0 20px 0;
+      margin: 0;
       color: var(--primary-green-dark);
       font-size: 1.8rem;
       font-weight: 800;
       text-shadow: 2px 2px 0px #ffffff, 4px 4px 0px rgba(0,0,0,0.05);
+      flex: 1;
+      text-align: center;
+    }
+
+    /* ⚙️ 設定ボタン */
+    .settings-icon-btn {
+      background: var(--card-bg);
+      border: 3px solid var(--border-color);
+      border-bottom: 4px solid #cbba9f;
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.05);
+      position: absolute;
+      right: 0;
+      top: 0;
+      transition: transform 0.1s;
+    }
+
+    .settings-icon-btn:active {
+      transform: translateY(2px);
     }
 
     .container {
@@ -332,7 +366,6 @@
       padding: 4px 0;
     }
 
-    /* マスの高さを固定し横幅も均等保持 */
     .day-cell {
       height: 52px;
       border: 2px solid #ebdccb;
@@ -365,7 +398,6 @@
 
     .day-cell.dimmed { opacity: 0.35; }
 
-    /* 「🍳 ◯件」形式のバッジ */
     .day-badge {
       background: var(--accent-orange);
       color: white;
@@ -479,7 +511,7 @@
       padding: 4px 8px;
       border-radius: 10px;
       display: inline-block;
-      margin-top: 4px;
+      margin-bottom: 8px;
     }
     .sync-online { background: #e8f5e9; color: #2e7d32; }
     .sync-offline { background: #fff3e0; color: #e65100; }
@@ -487,27 +519,14 @@
 </head>
 <body>
 
-<h1 class="header-title">🍃 あつまれ レシピの森 🍳</h1>
+<div class="header-container">
+  <h1 class="header-title">🍃 あつまれ レシピの森 🍳</h1>
+  <button class="settings-icon-btn" onclick="openSettingsModal()" title="設定">⚙️</button>
+</div>
 
 <div class="container">
-  <!-- 左カラム: 条件入力 & 設定 -->
+  <!-- 左カラム: 食材入力 -->
   <div class="sidebar">
-    <div class="card" style="margin-bottom: 16px;">
-      <h2>🔑 APIのかぎ</h2>
-      <label for="apiKey">Gemini API Key:</label>
-      <input type="password" id="apiKey" placeholder="AI Studioのキーを貼ってね">
-      <span class="help-link" onclick="openKeyHelpModal()">❓ APIキーの取得方法はこちら</span>
-    </div>
-
-    <!-- リアルタイム夫婦共有設定 -->
-    <div class="card" style="margin-bottom: 16px;">
-      <h2>🔥 夫婦リアルタイム共有設定</h2>
-      <span id="syncStatus" class="sync-status sync-offline">🔌 未接続（オフライン保存中）</span>
-      <label for="firebaseConfigText">Firebase Database URL / Config:</label>
-      <textarea id="firebaseConfigText" placeholder='{"databaseURL": "https://your-app.firebaseio.com"}' style="height:60px; font-size:0.75rem;"></textarea>
-      <p style="font-size: 0.7rem; color: #8c7868; margin: 4px 0 0 0;">※FirebaseのdatabaseURLを入力すると自動で夫婦で同期されます。</p>
-    </div>
-
     <div class="card">
       <h2>🧺 パスポート（食材入力）</h2>
       <label for="ingredients">今日お家にある食材:</label>
@@ -584,21 +603,44 @@
   </div>
 </div>
 
-<!-- モーダル各種 -->
-<div class="modal-overlay" id="keyHelpModal">
+<!-- ⚙️ 設定モーダル（APIキー & 夫婦共有設定） -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h3 style="margin-top:0; color:var(--wood-brown);">⚙️ アプリの設定</h3>
+    
+    <div style="border-bottom: 2px dashed var(--border-color); padding-bottom: 12px; margin-bottom: 12px;">
+      <label for="apiKey" style="margin-top:0;">🔑 Gemini API Key:</label>
+      <input type="password" id="apiKey" placeholder="AI Studioのキーを貼ってね">
+      <span class="help-link" onclick="openKeyHelpModal()">❓ APIキーの取得方法はこちら</span>
+    </div>
+
+    <div>
+      <label style="margin-top:0;">🔥 夫婦リアルタイム共有設定:</label>
+      <span id="syncStatus" class="sync-status sync-offline">🔌 未接続（オフライン保存中）</span>
+      <input type="text" id="firebaseConfigText" placeholder='{"databaseURL": "https://..."}'>
+      <p style="font-size: 0.7rem; color: #8c7868; margin: 4px 0 0 0;">※FirebaseのdatabaseURLを入力すると自動で夫婦共有されます。</p>
+    </div>
+
+    <button class="accent" onclick="closeSettingsModal()" style="margin-top: 16px;">設定を保存して閉じる</button>
+  </div>
+</div>
+
+<!-- APIキー説明モーダル -->
+<div class="modal-overlay" id="keyHelpModal" style="z-index: 110;">
   <div class="modal">
     <h3 style="margin-top:0; color:var(--wood-brown);">🔑 APIキーの取得手順</h3>
     <p style="font-size:0.85rem; line-height:1.6;">Googleのアカウントがあれば、約1分・無料で簡単に取得できます。</p>
     <ol style="font-size:0.85rem; padding-left:20px; line-height:1.6;">
       <li>下のボタンを押して「Google AI Studio」を開く</li>
       <li>「Get API key」→「Create API key」をタップ</li>
-      <li>発行された文字列をコピーして、この画面の「APIのかぎ」枠に貼り付ける</li>
+      <li>発行された文字列をコピーして、設定画面の「APIのかぎ」枠に貼り付ける</li>
     </ol>
     <button class="accent" onclick="window.open('https://aistudio.google.com/app/apikey', '_blank')">🌐 Google AI Studio を開く</button>
     <button class="outline" onclick="closeKeyHelpModal()" style="margin-top: 8px;">とじる</button>
   </div>
 </div>
 
+<!-- 日付詳細モーダル -->
 <div class="modal-overlay" id="dayDetailModal">
   <div class="modal">
     <h3 id="dayDetailTitle" style="margin-top:0; color:var(--wood-brown);">📅 ◯月◯日の献立</h3>
@@ -608,6 +650,7 @@
   </div>
 </div>
 
+<!-- 記録・編集モーダル -->
 <div class="modal-overlay" id="recordModal">
   <div class="modal">
     <h3 id="modalDateTitle" style="margin-top:0; color:var(--wood-brown);">📝 つくったメモ</h3>
@@ -674,6 +717,17 @@
     renderCalendar();
   };
 
+  function openSettingsModal() {
+    document.getElementById("settingsModal").style.display = "flex";
+  }
+
+  function closeSettingsModal() {
+    document.getElementById("settingsModal").style.display = "none";
+  }
+
+  function openKeyHelpModal() { document.getElementById("keyHelpModal").style.display = "flex"; }
+  function closeKeyHelpModal() { document.getElementById("keyHelpModal").style.display = "none"; }
+
   // --- Firebase リアルタイム同期 ---
   function initFirebase() {
     const rawCfg = localStorage.getItem(STORAGE_KEY_FIREBASE) || "";
@@ -721,9 +775,6 @@
       dbRef.set(localLogs);
     }
   }
-
-  function openKeyHelpModal() { document.getElementById("keyHelpModal").style.display = "flex"; }
-  function closeKeyHelpModal() { document.getElementById("keyHelpModal").style.display = "none"; }
 
   // --- 音声入力 ---
   let recognition = null;
@@ -788,7 +839,7 @@
   async function generateRecipes() {
     const apiKey = document.getElementById("apiKey").value.trim();
     if (!apiKey) {
-      alert("Gemini API Key を入力してね！");
+      alert("右上の⚙️ボタンから Gemini API Key を入力してね！");
       return;
     }
 
@@ -842,7 +893,7 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
 
       renderRecipes(recipes);
     } catch (e) {
-      alert("レシピがうまくひらめかなかったよ。API Keyを確認してみてね！");
+      alert("レシピがうまくひらめかなかったよ。⚙️ボタンからAPI Keyを確認してみてね！");
       console.error(e);
     } finally {
       document.getElementById("loading").style.display = "none";
@@ -917,7 +968,6 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     renderCalendar();
   }
 
-  // --- カレンダー描画（レイアウト保護＋コンパクト件数表示） ---
   function renderCalendar() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -978,7 +1028,6 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
           else cell.classList.add("dimmed");
         }
 
-        // コンパクトな「🍳 ◯件」バッジ表示に戻し、横幅崩れを防止
         const badge = document.createElement("div");
         badge.className = "day-badge";
         if (isMatched) badge.style.background = "var(--primary-green-dark)";
