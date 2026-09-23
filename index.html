@@ -222,7 +222,7 @@
       border-bottom-color: #d6c5b0;
     }
 
-    /* レシピカード & 美しい完成イメージイラストカード */
+    /* レシピカード & 完成イメージイラストバッジ */
     .recipe-card {
       border: 3px solid #eedec8;
       border-radius: 20px;
@@ -546,7 +546,7 @@
       <h2>🧺 パスポート（食材入力）</h2>
       <label for="ingredients">今日お家にある食材:</label>
       <div class="input-with-btn">
-        <textarea id="ingredients" placeholder="例：ぶたにく、キャベツ、玉ねぎ"></textarea>
+        <textarea id="ingredients" placeholder="例：ぶたにく、キャベツ、玉ねぎ" oninput="saveCurrentIngredients()"></textarea>
         <button type="button" class="voice-btn" id="voiceBtn" onclick="toggleVoiceInput()">🎤 音声で入力</button>
       </div>
 
@@ -713,6 +713,8 @@
   const STORAGE_KEY_LOGS = "recipe_app_logs";
   const STORAGE_KEY_API = "recipe_app_gemini_key";
   const STORAGE_KEY_FIREBASE = "recipe_app_firebase_cfg";
+  const STORAGE_KEY_RECENT_RECIPES = "recipe_app_last_generated";
+  const STORAGE_KEY_INGREDIENTS = "recipe_app_last_ingredients";
 
   window.onload = () => {
     document.getElementById("apiKey").value = localStorage.getItem(STORAGE_KEY_API) || "";
@@ -727,10 +729,28 @@
       initFirebase();
     });
 
+    // 入力中の食材の復元
+    document.getElementById("ingredients").value = localStorage.getItem(STORAGE_KEY_INGREDIENTS) || "";
+
     localLogs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || "{}");
     initFirebase();
     renderCalendar();
+
+    // 最後に生成されたレシピの復元
+    const savedRecipes = localStorage.getItem(STORAGE_KEY_RECENT_RECIPES);
+    if (savedRecipes) {
+      try {
+        renderRecipes(JSON.parse(savedRecipes));
+      } catch (e) {
+        console.error("Failed to restore recipes:", e);
+      }
+    }
   };
+
+  function saveCurrentIngredients() {
+    const ing = document.getElementById("ingredients").value;
+    localStorage.setItem(STORAGE_KEY_INGREDIENTS, ing);
+  }
 
   function openSettingsModal() { document.getElementById("settingsModal").style.display = "flex"; }
   function closeSettingsModal() { document.getElementById("settingsModal").style.display = "none"; }
@@ -816,6 +836,7 @@
       const transcript = event.results[0][0].transcript;
       const textarea = document.getElementById("ingredients");
       textarea.value = textarea.value ? `${textarea.value}、${transcript}` : transcript;
+      saveCurrentIngredients();
     };
 
     recognition.onerror = () => stopVoiceRecording();
@@ -901,6 +922,9 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
       rawText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
       const recipes = JSON.parse(rawText);
 
+      // 生成したレシピをローカルストレージに保存（再読み込み対策）
+      localStorage.setItem(STORAGE_KEY_RECENT_RECIPES, JSON.stringify(recipes));
+
       renderRecipes(recipes);
     } catch (e) {
       alert("レシピがうまくひらめかなかったよ。⚙️ボタンからAPI Keyを確認してみてね！");
@@ -910,7 +934,7 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     }
   }
 
-  // --- レシピ一覧表示 (確実かつおしゃれに表示されるアートイラストバッジ方式) ---
+  // --- レシピ一覧表示 ---
   function renderRecipes(recipes) {
     const container = document.getElementById("recipeResults");
     container.innerHTML = "";
