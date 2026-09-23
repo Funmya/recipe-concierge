@@ -60,7 +60,6 @@
       text-align: center;
     }
 
-    /* ⚙️ 設定ボタン */
     .settings-icon-btn {
       background: var(--card-bg);
       border: 3px solid var(--border-color);
@@ -225,7 +224,7 @@
       border-bottom-color: #d6c5b0;
     }
 
-    /* レシピ一覧 & 画像表示 */
+    /* レシピカード & アイコン風イラストバッジ */
     .recipe-card {
       border: 3px solid #eedec8;
       border-radius: 20px;
@@ -241,23 +240,35 @@
       cursor: pointer;
     }
 
-    .recipe-img-wrapper {
+    .recipe-art-badge {
       width: 85px;
       height: 85px;
-      border-radius: 14px;
-      border: 2px solid #ebdccb;
-      background: #fdfaf5;
+      border-radius: 18px;
+      border: 3px solid #ebdccb;
+      background: linear-gradient(135deg, #fffaf0 0%, #f7ede2 100%);
       flex-shrink: 0;
-      overflow: hidden;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      box-shadow: inset 0 -3px 0 rgba(0,0,0,0.05);
     }
 
-    .recipe-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+    .recipe-art-icon {
+      font-size: 2.2rem;
+      line-height: 1;
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));
+    }
+
+    .recipe-art-label {
+      font-size: 0.65rem;
+      font-weight: 800;
+      color: var(--wood-brown);
+      margin-top: 4px;
+      background: #ffffff;
+      padding: 1px 6px;
+      border-radius: 8px;
+      border: 1px solid #ebdccb;
     }
 
     .recipe-summary { flex: 1; }
@@ -603,7 +614,7 @@
   </div>
 </div>
 
-<!-- ⚙️ 設定モーダル（APIキー & 夫婦共有設定） -->
+<!-- ⚙️ 設定モーダル -->
 <div class="modal-overlay" id="settingsModal">
   <div class="modal">
     <h3 style="margin-top:0; color:var(--wood-brown);">⚙️ アプリの設定</h3>
@@ -717,14 +728,8 @@
     renderCalendar();
   };
 
-  function openSettingsModal() {
-    document.getElementById("settingsModal").style.display = "flex";
-  }
-
-  function closeSettingsModal() {
-    document.getElementById("settingsModal").style.display = "none";
-  }
-
+  function openSettingsModal() { document.getElementById("settingsModal").style.display = "flex"; }
+  function closeSettingsModal() { document.getElementById("settingsModal").style.display = "none"; }
   function openKeyHelpModal() { document.getElementById("keyHelpModal").style.display = "flex"; }
   function closeKeyHelpModal() { document.getElementById("keyHelpModal").style.display = "none"; }
 
@@ -874,7 +879,8 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     "description": "一口みどころ・アピールポイント",
     "ingredients": "使用する材料リスト",
     "steps": ["手順1のテキスト", "手順2のテキスト", "手順3のテキスト"],
-    "englishName": "japanese food"
+    "categoryIcon": "お肉なら🍖、お魚なら🐟、野菜なら🥗、麺類なら🍜、その他なら🍳などの絵文字1文字",
+    "categoryName": "お肉のおかず、サラダ、煮物などの短めのカテゴリ名"
   }
 ]
 `;
@@ -900,16 +906,17 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     }
   }
 
+  // --- レシピ一覧表示 (100%確実に表示されるアートアイコン方式) ---
   function renderRecipes(recipes) {
     const container = document.getElementById("recipeResults");
     container.innerHTML = "";
 
     recipes.forEach((recipe, idx) => {
-      const query = encodeURIComponent(recipe.englishName || "japanese food");
-      const imgUrl = `https://source.unsplash.com/200x200/?${query}&sig=${idx + Math.floor(Math.random() * 100)}`;
-
       const card = document.createElement("div");
       card.className = "recipe-card";
+
+      const icon = recipe.categoryIcon || "🍳";
+      const catName = recipe.categoryName || "おすすめ";
 
       const stepsHtml = Array.isArray(recipe.steps) 
         ? recipe.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')
@@ -917,8 +924,9 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
 
       card.innerHTML = `
         <div class="recipe-header" onclick="toggleRecipeDetails(${idx})">
-          <div class="recipe-img-wrapper">
-            <img src="${imgUrl}" class="recipe-img" alt="${escapeHtml(recipe.title)}" loading="lazy" onerror="handleImageError(this)">
+          <div class="recipe-art-badge">
+            <span class="recipe-art-icon">${icon}</span>
+            <span class="recipe-art-label">${escapeHtml(catName)}</span>
           </div>
           <div class="recipe-summary">
             <h3>🍳 ${escapeHtml(recipe.title)}</h3>
@@ -934,16 +942,9 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
         </div>
       `;
 
-      card.dataset.recipeJson = JSON.stringify({ ...recipe, imgUrl });
+      card.dataset.recipeJson = JSON.stringify(recipe);
       container.appendChild(card);
     });
-  }
-
-  function handleImageError(imgElem) {
-    imgElem.onerror = null;
-    const icons = ["🍳", "🥗", "🍖", "🍲", "🍱"];
-    const randomIcon = icons[Math.floor(Math.random() * icons.length)];
-    imgElem.src = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100%" height="100%" fill="%23f7ede2"/><text x="50%" y="55%" font-size="40" text-anchor="middle" dominant-baseline="middle">${randomIcon}</text></svg>`;
   }
 
   function toggleRecipeDetails(idx) {
