@@ -222,7 +222,7 @@
       border-bottom-color: #d6c5b0;
     }
 
-    /* レシピカード & 完成イメージ写真枠 */
+    /* レシピカード & 美しい完成イメージイラストカード */
     .recipe-card {
       border: 3px solid #eedec8;
       border-radius: 20px;
@@ -238,33 +238,41 @@
       cursor: pointer;
     }
 
-    .recipe-img-box {
+    .recipe-art-box {
       width: 90px;
       height: 90px;
       border-radius: 18px;
       border: 3px solid #ebdccb;
-      background: #fdfaf5;
+      background: linear-gradient(135deg, #fffaf0 0%, #faeee1 100%);
       flex-shrink: 0;
-      overflow: hidden;
-      position: relative;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      box-shadow: inset 0 -3px 0 rgba(0,0,0,0.05);
+      position: relative;
+      overflow: hidden;
     }
 
-    .recipe-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
+    .recipe-art-emoji {
+      font-size: 2.3rem;
+      line-height: 1;
+      filter: drop-shadow(0 2px 3px rgba(0,0,0,0.12));
     }
 
-    .recipe-img-loading {
-      font-size: 0.7rem;
-      color: #a67c52;
-      text-align: center;
-      padding: 4px;
-      font-weight: bold;
+    .recipe-art-tag {
+      font-size: 0.6rem;
+      font-weight: 800;
+      color: var(--wood-brown);
+      margin-top: 4px;
+      background: #ffffff;
+      padding: 1px 6px;
+      border-radius: 8px;
+      border: 1px solid #ebdccb;
+      max-width: 82px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .recipe-summary { flex: 1; }
@@ -875,7 +883,8 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     "description": "一口みどころ・アピールポイント",
     "ingredients": "使用する材料リスト",
     "steps": ["手順1のテキスト", "手順2のテキスト", "手順3のテキスト"],
-    "searchQuery": "料理に最も近い画像検索用の英語キーワード（例: pork miso stir fry, ketchup pork chop, pork egg bowl など具体的に）"
+    "artEmoji": "料理にぴったりの絵文字1文字（例: 🥩, 🐟, 🥗, 🍛, 🍜, 🍳 など）",
+    "artLabel": "料理のジャンルや食材のタグ（例: 豚肉のおかず、シャキシャキ炒め など短めの言葉）"
   }
 ]
 `;
@@ -901,7 +910,7 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
     }
   }
 
-  // --- レシピ一覧表示 (確実な実写真プレースホルダー付き取得) ---
+  // --- レシピ一覧表示 (確実かつおしゃれに表示されるアートイラストバッジ方式) ---
   function renderRecipes(recipes) {
     const container = document.getElementById("recipeResults");
     container.innerHTML = "";
@@ -910,9 +919,8 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
       const card = document.createElement("div");
       card.className = "recipe-card";
 
-      // 安定度の高いUnsplashのダイレクト検索画像URL
-      const query = encodeURIComponent(recipe.searchQuery || recipe.title);
-      const imgUrl = `https://source.unsplash.com/featured/300x300/?food,${query}`;
+      const emoji = recipe.artEmoji || "🍳";
+      const label = recipe.artLabel || "おいしい一品";
 
       const stepsHtml = Array.isArray(recipe.steps) 
         ? recipe.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')
@@ -920,11 +928,9 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
 
       card.innerHTML = `
         <div class="recipe-header" onclick="toggleRecipeDetails(${idx})">
-          <div class="recipe-img-box">
-            <div class="recipe-img-loading">📷 写真読み込み中...</div>
-            <img src="${imgUrl}" class="recipe-img" alt="${escapeHtml(recipe.title)}" loading="lazy" 
-                 onload="this.previousElementSibling.style.display='none'" 
-                 onerror="handleImageFallback(this, '${escapeHtml(recipe.title)}')">
+          <div class="recipe-art-box">
+            <div class="recipe-art-emoji">${emoji}</div>
+            <div class="recipe-art-tag">${escapeHtml(label)}</div>
           </div>
           <div class="recipe-summary">
             <h3>🍳 ${escapeHtml(recipe.title)}</h3>
@@ -940,42 +946,9 @@ ${recentRecipes.length > 0 ? recentRecipes.join(", ") : "特に入力なし"}
         </div>
       `;
 
-      card.dataset.recipeJson = JSON.stringify({ ...recipe, imgUrl });
+      card.dataset.recipeJson = JSON.stringify(recipe);
       container.appendChild(card);
     });
-  }
-
-  // 写真取得失敗時：安全かつ明確な「料理名入りカード画像」を動的生成
-  function handleImageFallback(imgElem, title) {
-    imgElem.onerror = null;
-    if (imgElem.previousElementSibling) {
-      imgElem.previousElementSibling.style.display = 'none';
-    }
-    const canvas = document.createElement('canvas');
-    canvas.width = 200;
-    canvas.height = 200;
-    const ctx = canvas.getContext('2d');
-    
-    // パステル風背景
-    ctx.fillStyle = '#f7ede2';
-    ctx.fillRect(0, 0, 200, 200);
-    
-    // 枠線
-    ctx.strokeStyle = '#ebdccb';
-    ctx.lineWidth = 8;
-    ctx.strokeRect(0, 0, 200, 200);
-
-    // テキスト
-    ctx.fillStyle = '#5d4a3e';
-    ctx.font = 'bold 24px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('🍳', 100, 80);
-
-    ctx.font = 'bold 14px sans-serif';
-    const shortTitle = title.length > 8 ? title.substring(0, 7) + '..' : title;
-    ctx.fillText(shortTitle, 100, 125);
-
-    imgElem.src = canvas.toDataURL();
   }
 
   function toggleRecipeDetails(idx) {
